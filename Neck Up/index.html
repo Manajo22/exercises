@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Face Tilt Line Burst</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+    }
+    video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      transform: scaleX(-1);
+      opacity: 0.2;
+      z-index: 0;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+  <script type="module">
+    import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest";
+
+    let faceLandmarker, video;
+    let landmarks = [];
+
+    window.getLandmarks = () => landmarks;
+
+    async function init() {
+      const filesetResolver = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+      );
+
+      faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-assets/face_landmarker.task"
+        },
+        runningMode: "VIDEO",
+        numFaces: 1
+      });
+
+      video = document.createElement("video");
+      video.setAttribute("playsinline", "");
+      video.autoplay = true;
+      document.body.appendChild(video);
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+
+        video.addEventListener("loadeddata", () => {
+          requestAnimationFrame(loop);
+        });
+      } catch (err) {
+        console.error("Camera access denied or unavailable", err);
+      }
+    }
+
+    async function loop() {
+      if (!faceLandmarker) return;
+      const results = faceLandmarker.detectForVideo(video, performance.now());
+      landmarks = results.faceLandmarks.length > 0 ? results.faceLandmarks[0] : [];
+      requestAnimationFrame(loop);
+    }
+
+    init();
+  </script>
+
+  <script>
+  let lines = [];
+  let tiltState = "idle";
+  let previousY = null;
+  let lastActiveTime = 0;
+  let retracting = false;
+
+  class BurstLine {
+    constructor(angle) {
+      this.start = createVector(width / 2, height / 2);
+      this.dir = p5.Vector.fromAngle(angle).mult(random(20, 40));
+      this.end = this.start.copy();
+      this.done = false;
+      this.retracting = false;
+      this.color = color(random(360), 80, 80);
+    }
+
+    update() {
+      if (this.retracting) {
+        let retractDir = p5.Vector.sub(this.start, this.end).setMag(5);
+        this.end.add(retractDir);
+        if (p5.Vector.dist(this.start, this.end) < 5) {
+          this.done = true;
+        }
+      } else {
+        this.end.add(this.dir);
+        if (
+          this.end.x < 0 || this.end.x > width ||
+          this.end.y < 0 || this.end.y > height
+        ) {
+          this.done = true;
+        }
+      }
+    }
+
+    display() {
+      stroke(this.color);
+      strokeWeight(2);
+      line(this.start.x, this.start.y, this.end.x, this.end.y);
+    }
+  }
+
+  function setup() {
+    createCanvas(windowWidth, windowHeight);
+    colorMode(HSL, 360, 100, 100);
+    noFill();
+  }
+
+  function draw() {
+    clear();
+    let pts = window.getLandmarks();
+    let now = millis();
+
+    if (pts.length > 0) {
+      let nose = pts[1];
+      let currentY = nose.y;
+
+      if (previousY !== null) {
+        let deltaY = currentY - previousY;
+
+        if (abs(deltaY) > 0.005) {
+          tiltState = "active";
+          lastActiveTime = now;
+          retracting = false;
+
+          for (let i = 0; i < 20; i++) {
+            lines.push(new BurstLine(random(TWO_PI)));
+          }
+        } else {
+          tiltState = "idle";
+        }
+      }
+
+      previousY = currentY;
+    } else {
+      tiltState = "idle";
+      previousY = null;
+    }
+
+    if (tiltState === "idle" && now - lastActiveTime > 2000 && !retracting) {
+      retracting = true;
+      for (let l of lines) {
+        l.retracting = true;
+      }
+    }
+
+    for (let l of lines) {
+      l.update();
+      l.display();
+    }
+
+    lines = lines.filter(l => !l.done);
+  }
+
+  function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+  }
+</script>
+
+
+   
+</body>
+</html>
