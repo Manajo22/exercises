@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Neck Tilt Tracker</title>
+  <link rel="stylesheet" href="https://use.typekit.net/xvl8ddx.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "argent-pixel-cf", sans-serif;
+      font-weight: 400;
+      font-style: italic;
+    }
+
+    body {
+      background: black;
+      overflow: hidden;
+    }
+
+    video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      transform: scaleX(-1);
+      opacity: 0.3;
+      z-index: 0;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .nav-options {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 30px;
+      z-index: 10;
+    }
+
+    .nav-options a {
+      color: white;
+      text-decoration: none;
+      
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px 20px;
+      border-radius: 20px;
+      transition: background 0.3s;
+    }
+
+    .nav-options a:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  </style>
+
+  <!-- p5.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+
+<div class="nav-options">
+  <a href="../Neck Tilt/index.html">Tilt Left-Right</a>
+  <a href="../Neck left/index.html">Look Side-to-Side</a>
+  <a href="../Neck Up/index.html">Look Up-Down</a>
+</div>
+0
+<script type="module">
+  import {
+    FaceLandmarker,
+    FilesetResolver
+  } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest";
+
+  let faceLandmarker, video;
+  let landmarks = [];
+
+  window.getLandmarks = () => landmarks;
+
+  async function init() {
+    const filesetResolver = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+    );
+
+    faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-assets/face_landmarker.task"
+      },
+      runningMode: "VIDEO",
+      numFaces: 1
+    });
+
+    video = document.createElement("video");
+    video.setAttribute("playsinline", "");
+    video.autoplay = true;
+    document.body.appendChild(video);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+
+      video.addEventListener("loadeddata", () => {
+        requestAnimationFrame(loop);
+      });
+    } catch (err) {
+      console.error("Camera access denied or unavailable", err);
+    }
+  }
+
+  async function loop() {
+    if (!faceLandmarker) return;
+
+    const results = faceLandmarker.detectForVideo(video, performance.now());
+
+    if (results.faceLandmarks.length > 0) {
+      landmarks = results.faceLandmarks[0];
+    } else {
+      landmarks = [];
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  init();
+</script>
+
+<script>
+  let prevX = null;
+  let faceMoving = false;
+  let triggerCooldown = 0;
+
+  let t = 0;
+  let particles = [];
+  let numParticles = 150;
+  let particleState = "idle";
+  let lingerTimer = 1;
+
+  class Particle {
+    constructor() {
+      this.reset();
+      this.color = color(random(360), 80, 80, 0.8);
+    }
+
+    reset() {
+      this.pos = createVector(width / 2, height / 2);
+      this.vel = createVector(0, 0);
+    }
+
+    move(state) {
+      if (state === "active") {
+        if (this.vel.mag() < 0.1) {
+          this.vel = p5.Vector.random2D().mult(random(1, 4));
+        }
+        this.pos.add(this.vel);
+      } else if (state === "frozen") {
+        // stay in place
+      } else if (state === "idle") {
+        this.pos.lerp(createVector(width / 2, height / 2), 0.05);
+        this.pos.add(p5.Vector.random2D().mult(0.5));
+        this.vel.mult(0);
+      }
+
+      this.pos.x = (this.pos.x + width) % width;
+      this.pos.y = (this.pos.y + height) % height;
+    }
+
+    display() {
+      let size = particleState === "active" ? 16 : 10;
+      fill(this.color);
+      ellipse(this.pos.x, this.pos.y, size);
+    }
+  }
+
+  function setup() {
+    createCanvas(windowWidth, windowHeight);
+    noStroke();
+    colorMode(HSL, 360, 100, 100, 1);
+
+    for (let i = 0; i < numParticles; i++) {
+      particles.push(new Particle());
+    }
+  }
+
+  function draw() {
+    clear();
+    let pts = window.getLandmarks();
+    faceMoving = false;
+
+    if (pts.length > 0) {
+      let left = pts[234];
+      let right = pts[454];
+      let dx = right.x - left.x;
+      let dy = right.y - left.y;
+      let angle = atan2(dy, dx);
+
+      let tiltDegrees = degrees(angle);
+      let tiltThreshold = 8;
+
+      let previousTilt = window.previousTilt || 0;
+      let tiltChange = abs(tiltDegrees - previousTilt);
+      window.previousTilt = tiltDegrees;
+
+      let lingerDuration = 120;
+
+      if (abs(tiltDegrees) > tiltThreshold) {
+        if (tiltChange > 0.3) {
+          particleState = "active";
+          lingerTimer = lingerDuration;
+        } else {
+          if (lingerTimer > 0) {
+            particleState = "active";
+            lingerTimer--;
+          } else {
+            particleState = "frozen";
+          }
+        }
+      } else {
+        particleState = "idle";
+        lingerTimer = 0;
+      }
+
+      push();
+      translate(width / 2, height / 2);
+      rotate(angle);
+      translate(-width / 2, -height / 2);
+      pop();
+    } else {
+      particleState = "idle";
+    }
+
+    for (let p of particles) {
+      p.move(particleState);
+      p.display();
+    }
+  }
+
+  function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+  }
+</script>
+
+</body>
+</html>

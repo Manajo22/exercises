@@ -3,305 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Mirrored Face Tracker + Neck Animation</title>
+  <title>Neck Exercise Intro</title>
+  <link rel="stylesheet" href="https://use.typekit.net/xvl8ddx.css">
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      font-family: "argent-pixel-cf", sans-serif;
+      font-weight: 400;
+      font-style: italic;
     }
-#introOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: black;
-  color: white;
-  z-index: 1000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  text-align: center;
-  padding: 2rem;
-}
-
-#introContent h1 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-
-#introContent p {
-  font-size: 1.2rem;
-  margin-bottom: 2rem;
-}
-
-#introContent button {
-  padding: 1rem 2rem;
-  background: white;
-  color: black;
-  font-size: 1rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-#introContent button:hover {
-  background: #16d951;
-  color: black;
-}
 
     body {
       background: black;
-      overflow: hidden;
+      color: white;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      flex-direction: column;
+      padding: 2rem;
     }
 
-    video {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
-  transform: scaleX(-1);
-  opacity: 0.3; /* 👈 reduced visibility */
-  z-index: 0;
-}
+    h1 {
+      font-size: 3.5rem;
+      margin-bottom: 1rem;
+       font-family: "argent-pixel-cf", sans-serif;
+      font-weight: 400;
+      font-style: italic;
+    }
 
-    canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 1;
-      pointer-events: none;
+    p {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+       font-family: "argent-pixel-cf", sans-serif;
+      font-weight: 400;
+      font-style: italic;
+    }
+
+    button {
+      padding: 0.8rem 1.5rem;
+      background: white;
+      color: black;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+       font-family: "argent-pixel-cf", sans-serif;
+      font-weight: 400;
+      font-style: italic;
+    }
+
+    button:hover {
+      background: #16d951;
+      color: black;
     }
   </style>
-
-  <!-- p5.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 </head>
 <body>
-<div id="introOverlay">
-  <div id="introContent">
-    <h1>Have you been staring at your screen all day?<br>That's a little sad.</h1>
-    <p>Get started with some neck exercises to loosen up.</p>
-    <button onclick="hideOverlay()">Get Started</button>
-  </div>
-</div>
+  <p>Have you been staring at your screen all day? That's a little sad.</p>
+  <h1>Get started with some <br>neck exercises to loosen up.</h1>
+  <button onclick="startExercise()">Get Started</button>
 
-  <script type="module">
-    import {
-      FaceLandmarker,
-      FilesetResolver
-    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest";
-
-    let faceLandmarker, video;
-    let landmarks = [];
-
-    window.getLandmarks = () => landmarks;
-
-    async function init() {
-      const filesetResolver = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
-      );
-
-      faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-        baseOptions: {
-          modelAssetPath: "https://storage.googleapis.com/mediapipe-assets/face_landmarker.task"
-        },
-        runningMode: "VIDEO",
-        numFaces: 1
-      });
-
-      video = document.createElement("video");
-      video.setAttribute("playsinline", "");
-      video.autoplay = true;
-      document.body.appendChild(video);
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-
-        video.addEventListener("loadeddata", () => {
-          requestAnimationFrame(loop);
-        });
-      } catch (err) {
-        console.error("Camera access denied or unavailable", err);
-      }
-    }
-
-    async function loop() {
-      if (!faceLandmarker) return;
-
-      const results = faceLandmarker.detectForVideo(video, performance.now());
-
-      if (results.faceLandmarks.length > 0) {
-        landmarks = results.faceLandmarks[0];
-      } else {
-        landmarks = [];
-      }
-
-      requestAnimationFrame(loop);
-    }
-
-    init();
-  </script>
-
-
-  <!-- 🌀 p5.js sketch for animation -->
   <script>
-    let prevX = null;
-let faceMoving = false;
-let triggerCooldown = 0;
-
-   let t = 0;
-let particles = [];
-let numParticles = 150;
-let particleState = "idle";  // "idle" | "active" | "frozen"
-let lingerTimer = 1; // how many frames to stay "active"
-
-
-class Particle {
-  constructor() {
-    this.reset();
-    this.color = color(random(360), 80, 80, 0.8);
-  }
-
-  reset() {
-    this.pos = createVector(width / 2, height / 2);
-    this.vel = createVector(0, 0);
-  }
-
-  move(state) {
-    if (state === "active") {
-      if (this.vel.mag() < 0.1) {
-        this.vel = p5.Vector.random2D().mult(random(1, 4));
-      }
-      this.pos.add(this.vel);
-    } else if (state === "frozen") {
-      // stay in place
-    } else if (state === "idle") {
-      this.pos.lerp(createVector(width / 2, height / 2), 0.05);
-      this.pos.add(p5.Vector.random2D().mult(0.5));
-      this.vel.mult(0);
+    function startExercise() {
+      // Redirect to neck tilt page and skip intro
+      window.location.href = "../Neck Tilt/index.html";
     }
-
-    // wrap around edges
-    this.pos.x = (this.pos.x + width) % width;
-    this.pos.y = (this.pos.y + height) % height;
-  }
-
-  display() {
-    let size = particleState === "active" ? 16 : 10;
-    fill(this.color);
-    ellipse(this.pos.x, this.pos.y, size);
-  }
-}
-
-   function setup() {
-  createCanvas(windowWidth, windowHeight);
-  noStroke();
-  colorMode(HSL, 360, 100, 100, 1);
-
-  for (let i = 0; i < numParticles; i++) {
-    particles.push(new Particle());
-  }
-  
-}
-
- function draw() {
-  clear();
-  let pts = window.getLandmarks();
-  faceMoving = false;
-
-  if (pts.length > 0) {
-    let left = pts[234];
-    let right = pts[454];
-    let dx = right.x - left.x;
-    let dy = right.y - left.y;
-    let angle = atan2(dy, dx);
-
-    let tiltDegrees = degrees(angle);
-    let tiltThreshold = 8;
-
-    let previousTilt = window.previousTilt || 0;
-    let tiltChange = abs(tiltDegrees - previousTilt);
-    window.previousTilt = tiltDegrees;
-
-    // Decide the state
-    let lingerDuration = 120; // ~1 second at 60fps
-
-if (abs(tiltDegrees) > tiltThreshold) {
-  if (tiltChange > 0.3) {
-    // actively tilting → refresh timer
-    particleState = "active";
-    lingerTimer = lingerDuration;
-  } else {
-    // not moving but still tilted → use linger
-    if (lingerTimer > 0) {
-      particleState = "active";
-      lingerTimer--;
-    } else {
-      particleState = "frozen";
-    }
-  }
-} else {
-  particleState = "idle";
-  lingerTimer = 0;
-}
-
-
-    // Optional: rotate entire visual if you want
-    push();
-    translate(width / 2, height / 2);
-    rotate(angle);
-    translate(-width / 2, -height / 2);
-    pop();
-  } else {
-    particleState = "idle";
-  }
-
-  // Update and draw particles
-  for (let p of particles) {
-    p.move(particleState);
-    p.display();
-  }
-}
-
-    
-/*function drawGridTexture(time) {
-  let gridSize = 30;
-  let w = 800;
-  let h = 800;
-
-  for (let x = -w / 2; x < w / 2; x += gridSize) {
-    for (let y = -h / 2; y < h / 2; y += gridSize) {
-      let wave = sin((x * 0.04 + y * 0.05) + time * 2);
-      let sz = map(wave, -1, 1, 10, 30);
-
-      // Use time to drive hue
-      let hue = map(wave + time, -1, 2, 0, 360);
-      colorMode(HSL, 360, 100, 100, 1);
-      fill(hue, 80, 60, 0.8);
-      noStroke();
-      ellipse(x, y, sz, sz);
-    }
-  }
-
-  colorMode(RGB, 255); // reset
-}*/
-
-
-    function windowResized() {
-      resizeCanvas(windowWidth, windowHeight);
-    }
-    function hideOverlay() {
-  const overlay = document.getElementById("introOverlay");
-  overlay.style.display = "none";
-}
-
   </script>
 </body>
 </html>

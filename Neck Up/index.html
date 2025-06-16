@@ -4,11 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Face Tilt Line Burst</title>
+  <link rel="stylesheet" href="https://use.typekit.net/xvl8ddx.css">
   <style>
     body {
       margin: 0;
       overflow: hidden;
       background: black;
+      font-family: "argent-pixel-cf", sans-serif;
+      font-weight: 400;
+      font-style: italic;
     }
     video {
       position: absolute;
@@ -21,6 +25,30 @@
       opacity: 0.2;
       z-index: 0;
     }
+    .nav-options {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 30px;
+  z-index: 10;
+}
+
+.nav-options a {
+  color: white;
+  text-decoration: none;
+  
+  background: rgba(255, 255, 255, 0.1);
+  padding: 10px 20px;
+  border-radius: 20px;
+  transition: background 0.3s;
+}
+
+.nav-options a:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
     canvas {
       position: absolute;
       top: 0;
@@ -31,6 +59,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 </head>
 <body>
+  <div class="nav-options">
+  <a href="../Neck Tilt/index.html">Tilt Left-Right</a>
+  <a href="../Neck left/index.html">Look Side-to-Side</a>
+  <a href="../Neck Up/index.html">Look Up-Down</a>
+</div>
+
   <script type="module">
     import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest";
 
