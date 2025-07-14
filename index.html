@@ -10,37 +10,48 @@
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      font-family: "argent-pixel-cf", sans-serif;
-      font-weight: 400;
-      font-style: italic;
     }
 
     body {
       background: black;
       color: white;
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       text-align: center;
-      flex-direction: column;
+      font-family: "argent-pixel-cf", sans-serif;
       padding: 2rem;
     }
 
-    h1 {
-      font-size: 3.5rem;
-      margin-bottom: 1rem;
-       font-family: "argent-pixel-cf", sans-serif;
-      font-weight: 400;
-      font-style: italic;
+    .line {
+      display: block;
+      line-height: 1.2; /* reduced leading */
+      margin-bottom: 0.5rem;
     }
 
-    p {
-      font-size: 1.5rem;
-      margin-bottom: 0.5rem;
-       font-family: "argent-pixel-cf", sans-serif;
-      font-weight: 400;
+    #line1 {
+      font-size: clamp(1rem, 2.5vw, 1.5rem);
       font-style: italic;
+      font-weight: 400;
+    }
+
+    #line2 {
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      font-style: italic;
+      font-weight: 400;
+    }
+
+    #line3 {
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      font-style: italic;
+      font-weight: 400;
+    }
+
+    span.char {
+      display: inline-block;
+      transition: color 1s ease;
     }
 
     button {
@@ -52,9 +63,9 @@
       border-radius: 50px;
       cursor: pointer;
       transition: all 0.3s ease;
-       font-family: "argent-pixel-cf", sans-serif;
-      font-weight: 400;
+      font-family: "argent-pixel-cf", sans-serif;
       font-style: italic;
+      margin-top: 2rem;
     }
 
     button:hover {
@@ -64,16 +75,68 @@
   </style>
 </head>
 <body>
-  <p>Have you been staring at your screen all day? That's a little sad.</p>
-  <h1>Get started with some <br>neck exercises to loosen up.</h1>
+
+  <p id="line1" class="line"></p>
+  <p id="line2" class="line"></p>
+  <p id="line3" class="line"></p>
+
   <button onclick="startExercise()">Get Started</button>
 
   <script>
-    function startExercise() {
-     
-      window.location.href = "Neck-Tilt/index.html";
+   const colorPalette = [
+  "#FFC48D", "#BDA7F7", "#9BE6DE", "#E5FF91",
+  "#F49DB1", "#B6FF92", "#F8E473", "#CBAACB"
+];
 
+
+    const lines = {
+      line1: "Have you been staring at your screen all day? That’s a little sad.",
+      line2: "Get started with some",
+      line3: "neck exercises to loosen up."
+    };
+
+    function getRandomColor() {
+      return colorPalette[Math.floor(Math.random() * colorPalette.length)];
     }
+
+    function spanifyText(text) {
+      const frag = document.createDocumentFragment();
+      text.split(" ").forEach(word => {
+        [...word].forEach(char => {
+          const span = document.createElement("span");
+          span.className = "char";
+          span.textContent = char;
+          span.style.color = getRandomColor();
+          frag.appendChild(span);
+        });
+        const space = document.createElement("span");
+        space.innerHTML = "&nbsp;";
+        frag.appendChild(space);
+      });
+      return frag;
+    }
+
+    function renderText() {
+      for (let id in lines) {
+        const el = document.getElementById(id);
+        el.innerHTML = "";
+        el.appendChild(spanifyText(lines[id]));
+      }
+    }
+
+    function updateColors() {
+      document.querySelectorAll("span.char").forEach(span => {
+        span.style.color = getRandomColor();
+      });
+    }
+
+    function startExercise() {
+      window.location.href = "https://manajo22.github.io/exercises/Neck-Tilt/index.html";
+    }
+
+    renderText();
+    setInterval(updateColors, 1000);
   </script>
+
 </body>
 </html>
